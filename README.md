@@ -1,11 +1,11 @@
-# Local Intelligence for EveryOne
+# EveryOne: Local Intelligence Studio
 
-This project contains:
-- A React/Vite frontend in `src/`
-- A FastAPI backend in `backend/`
-- A Serverless Fine-Tuning pipeline via Modal in `modal_app.py`
+<p align="center">
+  <img src="./public/example.png" alt="EveryOne Studio Example Banner" width="80%">
+</p>
 
-The frontend calls the local backend on `/api/*`, which handles RAG, local inference (llama.cpp), and delegates fine-tuning to the cloud (Modal).
+
+**EveryOne** est une plateforme "Local-First" conçue pour démocratiser l'accès aux modèles de langage de petite taille (SLM). Ce studio permet de transformer votre machine en un centre de recherche privé capable de traiter des documents complexes via RAG (Retrieval-Augmented Generation) et d'affiner des modèles sur mesure via un pipeline hybride local/cloud. L'objectif est d'offrir une interface intuitive où la confidentialité des données est totale, tout en bénéficiant de la puissance de calcul du cloud pour l'entraînement.
 
 ---
 
@@ -13,7 +13,8 @@ The frontend calls the local backend on `/api/*`, which handles RAG, local infer
 
 * **100% Local Inference**: Chat with GGUF models (Llama, Phi, Qwen, Mistral) downloaded to your machine for total privacy.
 * **RAG & Drag-and-Drop**: Ingest your PDFs from the home page or drop them **directly into the chat window** to add them to the AI context in real-time.
-* **1-Click Fine-Tuning**: Train your own models (LoRA -> Merge -> Q4_K_M GGUF Quantization) on Modal's cloud GPUs directly from the web interface.
+* **1-Click Fine-Tuning with Real-time Polling**: Train your own models on Modal's cloud GPUs. Follow progress (0-100%) and status updates directly on the model card.
+* **Advanced Chat UI**: Full Markdown support (bold, headers, lists) and explicit source citations (PDF title + page number).
 * **Dynamic Management**: Download, rename, and load your fine-tuned models into memory without restarting the server.
 
 ---
@@ -45,16 +46,16 @@ cd backend
 uvicorn api:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-> **Healthcheck**: `curl http://127.0.0.1:8000/api/health`
-
 ---
 
 ## 2) Launching the Frontend
 
-From the project root, install Node dependencies and launch Vite:
+From the project root, install Node dependencies. To ensure all specific packages are present, we use a requirements list:
 
 ```bash
 npm install
+# Install specific project dependencies from the requirement list
+npm install $(cat npm_requirements.txt)
 npm run dev
 ```
 
@@ -70,57 +71,45 @@ To use the Fine-Tuning feature ("🚀 Fine-Tune Model"), you must configure Moda
    ```bash
    modal setup
    ```
-2. Create a Modal secret containing your HuggingFace token (to download base weights):
+2. Create a Modal secret containing your HuggingFace token:
    ```bash
    modal secret create huggingface-secret HF_TOKEN=hf_your_token_here
    ```
-3. Deploy the training script to Modal servers:
+3. Deploy the training script:
    ```bash
    modal deploy backend/finetune.py
    ```
-4. **Important**: Modal will return an API URL (e.g., `https://your-username--llama32-gguf-finetune...`). Copy this URL and update the `MODAL_URL` variable in the `/api/finetune` route within your `backend/api.py` file.
+4. **Important**: Copy the API URL returned by Modal and update the `MODAL_URL` variable in the `/api/finetune` route within your `backend/api.py`.
 
 ---
 
 ## 📁 Local Model Architecture (GGUF)
 
-The backend automatically scans the `backend/Model/` directory to find `.gguf` models.
+The backend automatically scans the `backend/Model/` directory to find `.gguf` models. 
 
-If you use the "⬇️ Download Finetuned" button from the Web interface, the backend will use the Modal CLI to automatically retrieve the cloud-generated `.gguf` model to this local directory with your chosen name.
-
-Verify models recognized by the backend:
-```bash
-curl http://127.0.0.1:8000/api/models/local
-```
-The `isLoaded` field indicates if the GGUF file is currently loaded in VRAM/RAM.
+If you use the "⬇️ Download Finetuned" button from the interface, the backend will automatically retrieve the cloud-generated model and place it in this local directory.
 
 ---
 
 ## 📄 PDF Ingestion & RAG
 
-- **Anti-duplication**: Previously indexed PDFs are not re-integrated, detected via SHA-256 file hashing.
-- **Precision**: Chunks store the original page number (`chunks.page`), and chat sources display the page.
-- **Transparency**: Chat responses explicitly display cited sources (PDF title, page number, and relevance score).
+- **Anti-duplication**: Previously indexed PDFs are detected via SHA-256 file hashing.
+- **Precision**: Chunks store the original page number (`chunks.page`).
+- **Transparency**: Chat responses display cited sources in dedicated UI badges.
 
 ---
 
-## 🌐 Environment Variables & Network Deployment
-
-Copy `.env.example` to `.env` if you wish to host the backend and frontend on separate machines:
-
-```bash
-cp .env.example .env
-```
+## 🌐 Network Deployment
 
 If your backend is running on a different machine (e.g., IP `10.0.0.12`):
 
 1. **Frontend (`.env`)**:
 ```env
-VITE_BACKEND_PROXY_TARGET=http://10.0.0.12:8000
+VITE_BACKEND_PROXY_TARGET=[http://10.0.0.12:8000](http://10.0.0.12:8000)
 VITE_API_BASE_URL=
 ```
 
-2. **Backend (same shell)**:
+2. **Backend**:
 ```bash
-CORS_ORIGINS=http://localhost:5173,http://192.168.x.x:5173 uvicorn api:app --host 0.0.0.0 --port 8000
+CORS_ORIGINS=http://localhost:5173,[http://192.168.](http://192.168.)x.x:5173 uvicorn api:app --host 0.0.0.0 --port 8000
 ```
